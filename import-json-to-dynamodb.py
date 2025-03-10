@@ -11,8 +11,9 @@ S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
 
-logger = logging.getLogger
-logger.setLevel(logging.INFO)
+logging.basicConfig(level = logging.INFO)
+logger = logging.getLogger()
+
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -40,8 +41,8 @@ def lambda_handler(event, context):
             'director': movie['director'], 
             'genres': movie['genres'], 
             'duration': movie['content']['duration'], 
-            'videoType': movie['content']['videos']['videoType'], 
-            'videoUrl': movie['content']['videos']['url'], 
+            'videoType': movie['content']['videos'][0]['videoType'], 
+            'videoUrl': movie['content']['videos'][0]['url'], 
             'trailerUrl': None,
             'dateAdded': current_date, 
             'lastWatched': None, 
