@@ -31,10 +31,8 @@ def lambda_handler(event, context):
     response = s3.get_object(Bucket = bucket, Key = key)
     content = response['Body']
     jsonObject = json.loads(content.read())
-    logger.info(jsonObject['Movies'])
 
     for movie in jsonObject['Movies']:
-        logger.info(movie['title'])
         movie_table.put_item(Item = {
             'name': movie['title'], 
             'year': movie['releaseDate'], 
