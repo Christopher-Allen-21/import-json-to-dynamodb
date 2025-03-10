@@ -6,6 +6,7 @@ from datetime import datetime
 
 MOVIE_TABLE = 'movies'
 TV_SHOW_TABLE = 'tv-shows'
+EPISODE_TABLE = 'episodes'
 
 S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
@@ -17,7 +18,10 @@ logger = logging.getLogger()
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(MOVIE_TABLE)
+movie_table = dynamodb.Table(MOVIE_TABLE)
+tv_show_table = dynamodb.Table(TV_SHOW_TABLE)
+episode_table = dynamodb.Table(EPISODE_TABLE)
+
 current_date = datetime.today().strftime('%Y-%m-%d')
 
 def lambda_handler(event, context):
@@ -31,7 +35,7 @@ def lambda_handler(event, context):
 
     for movie in jsonObject['Movies']:
         logger.info(movie['title'])
-        table.put_item(Item = {
+        movie_table.put_item(Item = {
             'name': movie['title'], 
             'year': movie['releaseDate'], 
             'description': movie['longDescription'],
@@ -45,28 +49,43 @@ def lambda_handler(event, context):
             'videoUrl': movie['content']['videos'][0]['url'], 
             'trailerUrl': None,
             'dateAdded': current_date, 
-            'lastWatched': None, 
+            'lastWatched': None
             })
 
+    for tv_show in jsonObject['TV Shows']:
 
-# {
-#     "title": "The Wolf of Wallstreet",
-#     "id": "",
-#     "longDescription": "New York stockbroker Jordan Belfort, who founded brokerage firm Stratton Oakmont while still in his early 20s, develops habits of wretched excess and corruption.",
-#     "thumbnail": "https://video-content-bucket-1.s3.amazonaws.com/thumbNails/theWolfOfWallstreet.jpg",
-#     "releaseDate": "2013",
-#     "rating": "R",
-#     "cast": "Leonardo DiCaprio, Jonah Hill, Margot Robbie, Matthew McConaughey",
-#     "director": "Martin Scorsese",
-#     "genres": [
-#         "All", "Action"
-#     ],
-#     "content": {
-#         "duration": 10740,
-#         "videos": [{
-#             "videoType": "mp4",
-#             "url": "https://video-content-bucket-1.s3.us-east-1.amazonaws.com/movies/The.Wolf.of.Wall.Street.2013.1080p.BluRay.x264.YIFY.mp4",
-#             "quality": "HD"
-#         }]			
-#     }
-# }
+        tv_show_table.put_item(Item = {
+            'name': tv_show['title'], 
+            'description': tv_show['shortDescription'],
+            'thumbnailUrl': tv_show['thumbnail'],
+            'releaseDate': tv_show['releaseDate'],
+            'rating': tv_show['rating'],
+            'cast': tv_show['cast'],
+            'director': tv_show['director'],
+            'genres': tv_show['genres'],
+            'dateAdded': current_date, 
+            'lastWatched': None
+            })
+        
+        for season in tv_show['seasons']:
+            for episode in season['episodes']:
+
+                episode_table.put_item(Item = {
+                'tvShowName': tv_show['title'], 
+                'seasonAndEpisode': 'S' + season['title'] + ' E' + str(episode['episodeNumber']),
+                'season': season['title'],
+                'episode': episode['episodeNumber'],
+                'name': episode['title'],
+                'description': episode['longDescription'],
+                'thumbnailUrl': episode['thumbnail'],
+                'releaseDate': episode['releaseDate'],
+                'rating': episode['rating'],
+                'cast': episode['cast'],
+                'director': episode['director'],
+                'genres': episode['genres'],
+                'videoType': episode['content']['videos'][0]['videoType'],
+                'videoUrl': episode['content']['videos'][0]['url'],
+                'duration': episode['content']['duration'],
+                'dateAdded': current_date, 
+                'lastWatched': None
+                })
