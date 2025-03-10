@@ -6,6 +6,13 @@
 
 - https://www.youtube.com/watch?v=_x8d8sfik8I
 
+# Lambda IAM Configuration
+
+- Click Role Name
+- ![image](https://github.com/user-attachments/assets/6b8b7c9f-94bb-4f37-99b6-c7e23b1e31d9)
+- Add full access for S3 and DynamoDb
+- ![image](https://github.com/user-attachments/assets/cf291acb-091c-49f5-ad29-81cae8c0df0c)
+
 # To Run
 
 - **tbd** -
