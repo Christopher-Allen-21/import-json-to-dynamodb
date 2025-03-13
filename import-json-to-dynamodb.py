@@ -12,6 +12,8 @@ EPISODE_TABLE = 'episodes'
 S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
+UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
+
 
 logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger()
@@ -39,8 +41,6 @@ def lambda_handler(event, context):
         else:
             existingMovie = None
 
-        print(existingMovie)
-
         if not existingMovie:
             movie_table.put_item(Item = {
                 'name': movie['title'], 
@@ -59,7 +59,8 @@ def lambda_handler(event, context):
                 'lastWatched': None,
                 'views': 0
                 })
-        else:
+        elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
+            # If movie already exists should update all fields in dynamo except dateAdded, lastWatched, and views
             movie_table.put_item(Item = {
                 'name': movie['title'], 
                 'year': movie['releaseDate'], 
@@ -100,7 +101,8 @@ def lambda_handler(event, context):
                 'lastWatched': None,
                 'views': 0
                 })
-        else:
+        elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
+            # If tv show already exists should update all fields in dynamo except dateAdded, lastWatched, and views
             tv_show_table.put_item(Item = {
                 'name': tv_show['title'], 
                 'description': tv_show['shortDescription'],
@@ -147,7 +149,8 @@ def lambda_handler(event, context):
                     'lastWatched': None,
                     'views': 0
                     })
-                else:
+                elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
+                    # If episode already exists should update all fields in dynamo except dateAdded, lastWatched, and views
                     episode_table.put_item(Item = {
                     'tvShowName': tv_show['title'], 
                     'seasonAndEpisode': seasonAndEpisode,
