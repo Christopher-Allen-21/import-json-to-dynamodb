@@ -12,6 +12,7 @@ EPISODE_TABLE = 'episodes'
 S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
+
 UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
 
 
@@ -37,11 +38,11 @@ def lambda_handler(event, context):
     for movie in jsonObject['Movies']:
 
         if len(get_dynamo_record_by_pk_and_sk('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items']) == 1:
-            existingMovie = get_dynamo_record_by_pk_and_sk('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items'][0]
+            existing_movie = get_dynamo_record_by_pk_and_sk('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items'][0]
         else:
-            existingMovie = None
+            existing_movie = None
 
-        if not existingMovie:
+        if not existing_movie:
             movie_table.put_item(Item = {
                 'name': movie['title'], 
                 'year': movie['releaseDate'], 
@@ -73,10 +74,10 @@ def lambda_handler(event, context):
                 'duration': movie['content']['duration'], 
                 'videoType': movie['content']['videos'][0]['videoType'], 
                 'videoUrl': movie['content']['videos'][0]['url'], 
-                'trailerUrl': existingMovie['trailerUrl'],
-                'dateAdded': existingMovie['dateAdded'],
-                'lastWatched': existingMovie['lastWatched'],
-                'views': existingMovie['views']
+                'trailerUrl': existing_movie['trailerUrl'],
+                'dateAdded': existing_movie['dateAdded'],
+                'lastWatched': existing_movie['lastWatched'],
+                'views': existing_movie['views']
                 })
 
     for tv_show in jsonObject['TV Shows']:
@@ -97,6 +98,7 @@ def lambda_handler(event, context):
                 'cast': tv_show['cast'],
                 'director': tv_show['director'],
                 'genres': tv_show['genres'],
+                'numberOfSeasons': len(tv_show['seasons']),
                 'dateAdded': current_date, 
                 'lastWatched': None,
                 'views': 0
@@ -112,6 +114,7 @@ def lambda_handler(event, context):
                 'cast': tv_show['cast'],
                 'director': tv_show['director'],
                 'genres': tv_show['genres'],
+                'numberOfSeasons': len(tv_show['seasons']),
                 'dateAdded': existingTvShow['dateAdded'],
                 'lastWatched': existingTvShow['lastWatched'],
                 'views': existingTvShow['views']
@@ -120,18 +123,18 @@ def lambda_handler(event, context):
         for season in tv_show['seasons']:
             for episode in season['episodes']:
 
-                seasonAndEpisode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
+                season_and_episode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
                 
-                if len(get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', seasonAndEpisode, episode_table)['Items']) == 1:
-                    existingEpisode = get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', seasonAndEpisode, episode_table)['Items'][0]
+                if len(get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items']) == 1:
+                    existing_episode = get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items'][0]
                 else:
-                    existingEpisode = None
+                    existing_episode = None
                 
 
-                if not existingEpisode:
+                if not existing_episode:
                     episode_table.put_item(Item = {
                     'tvShowName': tv_show['title'], 
-                    'seasonAndEpisode': seasonAndEpisode,
+                    'seasonAndEpisode': season_and_episode,
                     'season': season['title'],
                     'episode': episode['episodeNumber'],
                     'name': episode['title'],
@@ -153,7 +156,7 @@ def lambda_handler(event, context):
                     # If episode already exists should update all fields in dynamo except dateAdded, lastWatched, and views
                     episode_table.put_item(Item = {
                     'tvShowName': tv_show['title'], 
-                    'seasonAndEpisode': seasonAndEpisode,
+                    'seasonAndEpisode': season_and_episode,
                     'season': season['title'],
                     'episode': episode['episodeNumber'],
                     'name': episode['title'],
@@ -167,9 +170,9 @@ def lambda_handler(event, context):
                     'videoType': episode['content']['videos'][0]['videoType'],
                     'videoUrl': episode['content']['videos'][0]['url'],
                     'duration': episode['content']['duration'],
-                    'dateAdded': existingEpisode['dateAdded'], 
-                    'lastWatched': existingEpisode['lastWatched'],
-                    'views': existingEpisode['views']
+                    'dateAdded': existing_episode['dateAdded'], 
+                    'lastWatched': existing_episode['lastWatched'],
+                    'views': existing_episode['views']
                     })
 
 
