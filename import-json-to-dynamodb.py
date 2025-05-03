@@ -13,6 +13,8 @@ S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
 
+# Set to True to update all fields except dateAdded
+# Set to False to update all data fields
 UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
 
 
@@ -25,7 +27,7 @@ movie_table = dynamodb.Table(MOVIE_TABLE)
 tv_show_table = dynamodb.Table(TV_SHOW_TABLE)
 episode_table = dynamodb.Table(EPISODE_TABLE)
 
-current_date = datetime.today().strftime('%Y-%m-%d')
+current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 
 def lambda_handler(event, context):
     bucket = S3_BUCKET
@@ -37,8 +39,12 @@ def lambda_handler(event, context):
 
     for movie in jsonObject['Movies']:
 
-        if len(get_dynamo_record_by_pk_and_sk('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items']) == 1:
-            existing_movie = get_dynamo_record_by_pk_and_sk('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items'][0]
+        if len(get_dynamo_record_by_pk_and_sk('name', movie['title'], 'dateAdded', current_date_time, movie_table)['Items']) == 1:
+            try:
+                existing_movie = get_dynamo_record_by_pk_and_sk('name', movie['title'], 'dateAdded', movie['dateAdded'], movie_table)['Items'][0]
+            except Exception as e:
+                print(e)
+                print(movie['title'])
         else:
             existing_movie = None
 
@@ -56,7 +62,7 @@ def lambda_handler(event, context):
                 'videoType': movie['content']['videos'][0]['videoType'], 
                 'videoUrl': movie['content']['videos'][0]['url'], 
                 'trailerUrl': None,
-                'dateAdded': current_date, 
+                'dateAdded': current_date_time, 
                 'lastWatched': None,
                 'views': 0
                 })
@@ -99,7 +105,7 @@ def lambda_handler(event, context):
                 'director': tv_show['director'],
                 'genres': tv_show['genres'],
                 'numberOfSeasons': len(tv_show['seasons']),
-                'dateAdded': current_date, 
+                'dateAdded': current_date_time, 
                 'lastWatched': None,
                 'views': 0
                 })
@@ -148,7 +154,7 @@ def lambda_handler(event, context):
                     'videoType': episode['content']['videos'][0]['videoType'],
                     'videoUrl': episode['content']['videos'][0]['url'],
                     'duration': episode['content']['duration'],
-                    'dateAdded': current_date, 
+                    'dateAdded': current_date_time, 
                     'lastWatched': None,
                     'views': 0
                     })
