@@ -13,7 +13,7 @@ S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
 
-# Set to True to update all fields except dateAdded
+# Set to True to update all fields except dateAdded, lastWatched, and views
 # Set to False to update all data fields
 UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
 
@@ -27,7 +27,6 @@ movie_table = dynamodb.Table(MOVIE_TABLE)
 tv_show_table = dynamodb.Table(TV_SHOW_TABLE)
 episode_table = dynamodb.Table(EPISODE_TABLE)
 
-current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 
 def lambda_handler(event, context):
     bucket = S3_BUCKET
@@ -39,16 +38,16 @@ def lambda_handler(event, context):
 
     for movie in jsonObject['Movies']:
 
-        if len(get_dynamo_record_by_pk_and_sk('name', movie['title'], 'dateAdded', current_date_time, movie_table)['Items']) == 1:
-            try:
-                existing_movie = get_dynamo_record_by_pk_and_sk('name', movie['title'], 'dateAdded', movie['dateAdded'], movie_table)['Items'][0]
-            except Exception as e:
-                print(e)
-                print(movie['title'])
-        else:
-            existing_movie = None
+        # Trim last three digits to only show milliseconds
+        current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S %f')[:-3]
 
-        if not existing_movie:
+        if len(get_dynamo_record_by_pk('name', movie['title'], movie_table)['Items']) > 0:
+            # An array of all movies with same name
+            existing_movies = get_dynamo_record_by_pk('name', movie['title'], movie_table)['Items']
+        else:
+            existing_movies = None
+
+        if not existing_movies:
             movie_table.put_item(Item = {
                 'name': movie['title'], 
                 'year': movie['releaseDate'], 
@@ -67,28 +66,31 @@ def lambda_handler(event, context):
                 'views': 0
                 })
         elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
-            # If movie already exists should update all fields in dynamo except dateAdded, lastWatched, and views
-            movie_table.put_item(Item = {
-                'name': movie['title'], 
-                'year': movie['releaseDate'], 
-                'description': movie['longDescription'],
-                'thumbnailUrl': movie['thumbnail'], 
-                'rating': movie['rating'], 
-                'cast': movie['cast'], 
-                'director': movie['director'], 
-                'genres': movie['genres'], 
-                'duration': movie['content']['duration'], 
-                'videoType': movie['content']['videos'][0]['videoType'], 
-                'videoUrl': movie['content']['videos'][0]['url'], 
-                'trailerUrl': existing_movie['trailerUrl'],
-                'dateAdded': existing_movie['dateAdded'],
-                'lastWatched': existing_movie['lastWatched'],
-                'views': existing_movie['views']
-                })
+            # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
+            for existing_movie in existing_movies:
+                movie_table.put_item(Item = {
+                    'name': movie['title'], 
+                    'year': movie['releaseDate'], 
+                    'description': movie['longDescription'],
+                    'thumbnailUrl': movie['thumbnail'], 
+                    'rating': movie['rating'], 
+                    'cast': movie['cast'], 
+                    'director': movie['director'], 
+                    'genres': movie['genres'], 
+                    'duration': movie['content']['duration'], 
+                    'videoType': movie['content']['videos'][0]['videoType'], 
+                    'videoUrl': movie['content']['videos'][0]['url'], 
+                    'trailerUrl': existing_movie['trailerUrl'],
+                    'dateAdded': existing_movie['dateAdded'],
+                    'lastWatched': existing_movie['lastWatched'],
+                    'views': existing_movie['views']
+                    })
 
     for tv_show in jsonObject['TV Shows']:
 
-        
+        # Trim last three digits to only show milliseconds
+        current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S %f')[:-3]
+
         if len(get_dynamo_record_by_pk('name', tv_show['title'], tv_show_table)['Items']) == 1:
             existingTvShow = get_dynamo_record_by_pk('name', tv_show['title'], tv_show_table)['Items'][0]
         else:
