@@ -14,7 +14,7 @@ JSON_FILE = 'contentFeed.json'
 
 
 # Set to True to update all fields except dateAdded, lastWatched, and views
-# Set to False to update all data fields
+# Set to False to only add new records
 UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
 
 
