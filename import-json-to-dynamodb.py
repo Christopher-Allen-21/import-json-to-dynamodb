@@ -29,6 +29,8 @@ episode_table = dynamodb.Table(EPISODE_TABLE)
 
 
 def lambda_handler(event, context):
+    logger.info("Import started.")
+
     bucket = S3_BUCKET
     key = JSON_FILE
 
@@ -36,7 +38,14 @@ def lambda_handler(event, context):
     content = response['Body']
     jsonObject = json.loads(content.read())
 
-    for movie in jsonObject['Movies']:
+    create_and_update_movies(jsonObject['Movies'])
+    create_and_update_tv_shows(jsonObject['TV Shows'])
+
+    logger.info("Import completed.")
+    
+
+def create_and_update_movies(movie_json_data):
+    for movie in movie_json_data:
 
         # Trim last three digits to only show milliseconds
         current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S %f')[:-3]
@@ -85,8 +94,11 @@ def lambda_handler(event, context):
                     'lastWatched': existing_movie['lastWatched'],
                     'views': existing_movie['views']
                     })
+                
+    logger.info("Movie import completed.")            
 
-    for tv_show in jsonObject['TV Shows']:
+def create_and_update_tv_shows(tv_shows_json_data):
+    for tv_show in tv_shows_json_data:
 
         # Trim last three digits to only show milliseconds
         current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S %f')[:-3]
@@ -183,6 +195,7 @@ def lambda_handler(event, context):
                     'views': existing_episode['views']
                     })
 
+    logger.info("TV Show import completed.")       
 
 def get_dynamo_record_by_pk(pk_name, pk_value, table):
     try:
