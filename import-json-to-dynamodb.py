@@ -1,6 +1,5 @@
 import json
 import boto3
-import logging
 from boto3.dynamodb.conditions import Key
 from datetime import datetime
 
@@ -13,13 +12,18 @@ S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
 
-# Set to True to update all fields except dateAdded, lastWatched, and views
-# Set to False to only add new records
-UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS = False
+# Set to True to update all Movie fields except dateAdded, lastWatched, and views
+# Set to False to only add new movies
+UPDATE_EXISTING_MOVIE_DATA = False
 
+# Set to True to update all TV Show fields except dateAdded, lastWatched, and views
+# Set to False to only add tv shows
+UPDATE_EXISTING_TV_DATA = False
 
-logging.basicConfig(level = logging.INFO)
-logger = logging.getLogger()
+# Set to True to update all Episode fields except dateAdded, lastWatched, and views
+# Set to False to only add episodes
+UPDATE_EXISTING_EPISODE_DATA = False
+
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -29,7 +33,7 @@ episode_table = dynamodb.Table(EPISODE_TABLE)
 
 
 def lambda_handler(event, context):
-    logger.info("Import started.")
+    print("Import started.")
 
     bucket = S3_BUCKET
     key = JSON_FILE
@@ -41,7 +45,7 @@ def lambda_handler(event, context):
     create_and_update_movies(jsonObject['Movies'])
     create_and_update_tv_shows(jsonObject['TV Shows'])
 
-    logger.info("Import completed.")
+    print("Import completed.")
     
 
 def create_and_update_movies(movie_json_data):
@@ -56,27 +60,8 @@ def create_and_update_movies(movie_json_data):
         else:
             existing_movies = None
 
-        if not existing_movies:
-            movie_table.put_item(Item = {
-                'name': movie['title'], 
-                'year': movie['releaseDate'], 
-                'description': movie['longDescription'],
-                'thumbnailUrl': movie['thumbnail'], 
-                'rating': movie['rating'], 
-                'cast': movie['cast'], 
-                'director': movie['director'], 
-                'genres': movie['genres'], 
-                'duration': movie['content']['duration'], 
-                'videoType': movie['content']['videos'][0]['videoType'], 
-                'videoUrl': movie['content']['videos'][0]['url'], 
-                'trailerUrl': None,
-                'dateAdded': current_date_time, 
-                'lastWatched': None,
-                'views': 0
-                })
-        elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
-            # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
-            for existing_movie in existing_movies:
+        try:
+            if not existing_movies:
                 movie_table.put_item(Item = {
                     'name': movie['title'], 
                     'year': movie['releaseDate'], 
@@ -89,13 +74,37 @@ def create_and_update_movies(movie_json_data):
                     'duration': movie['content']['duration'], 
                     'videoType': movie['content']['videos'][0]['videoType'], 
                     'videoUrl': movie['content']['videos'][0]['url'], 
-                    'trailerUrl': existing_movie['trailerUrl'],
-                    'dateAdded': existing_movie['dateAdded'],
-                    'lastWatched': existing_movie['lastWatched'],
-                    'views': existing_movie['views']
+                    'trailerUrl': None,
+                    'dateAdded': current_date_time, 
+                    'lastWatched': None,
+                    'views': 0
                     })
+            elif UPDATE_EXISTING_MOVIE_DATA:
+                # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
+                for existing_movie in existing_movies:
+                    movie_table.put_item(Item = {
+                        'name': movie['title'], 
+                        'year': movie['releaseDate'], 
+                        'description': movie['longDescription'],
+                        'thumbnailUrl': movie['thumbnail'], 
+                        'rating': movie['rating'], 
+                        'cast': movie['cast'], 
+                        'director': movie['director'], 
+                        'genres': movie['genres'], 
+                        'duration': movie['content']['duration'], 
+                        'videoType': movie['content']['videos'][0]['videoType'], 
+                        'videoUrl': movie['content']['videos'][0]['url'], 
+                        'trailerUrl': existing_movie['trailerUrl'],
+                        'dateAdded': existing_movie['dateAdded'],
+                        'lastWatched': existing_movie['lastWatched'],
+                        'views': existing_movie['views']
+                        })
+        except Exception as ex:
+                print(f"Error creating/updating Movie: {movie['title']}. Exception: {ex}")
+                print(ex)
                 
-    logger.info("Movie import completed.")            
+    print("Movie import completed.")            
+
 
 def create_and_update_tv_shows(tv_shows_json_data):
     for tv_show in tv_shows_json_data:
@@ -123,7 +132,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 'lastWatched': None,
                 'views': 0
                 })
-        elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
+        elif UPDATE_EXISTING_TV_DATA:
             # If tv show already exists should update all fields in dynamo except dateAdded, lastWatched, and views
             tv_show_table.put_item(Item = {
                 'name': tv_show['title'], 
@@ -150,62 +159,67 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 else:
                     existing_episode = None
                 
+                try:
+                    if not existing_episode:
+                        episode_table.put_item(Item = {
+                        'tvShowName': tv_show['title'], 
+                        'seasonAndEpisode': season_and_episode,
+                        'season': season['title'],
+                        'episode': episode['episodeNumber'],
+                        'name': episode['title'],
+                        'description': episode['longDescription'],
+                        'thumbnailUrl': episode['thumbnail'],
+                        'releaseDate': episode['releaseDate'],
+                        'rating': episode['rating'],
+                        'cast': episode['cast'],
+                        'director': episode['director'],
+                        'genres': episode['genres'],
+                        'videoType': episode['content']['videos'][0]['videoType'],
+                        'videoUrl': episode['content']['videos'][0]['url'],
+                        'duration': episode['content']['duration'],
+                        'dateAdded': current_date_time, 
+                        'lastWatched': None,
+                        'views': 0
+                        })
+                    elif UPDATE_EXISTING_EPISODE_DATA:
+                        # If episode already exists should update all fields in dynamo except dateAdded, lastWatched, and views
+                        episode_table.put_item(Item = {
+                        'tvShowName': tv_show['title'], 
+                        'seasonAndEpisode': season_and_episode,
+                        'season': season['title'],
+                        'episode': episode['episodeNumber'],
+                        'name': episode['title'],
+                        'description': episode['longDescription'],
+                        'thumbnailUrl': episode['thumbnail'],
+                        'releaseDate': episode['releaseDate'],
+                        'rating': episode['rating'],
+                        'cast': episode['cast'],
+                        'director': episode['director'],
+                        'genres': episode['genres'],
+                        'videoType': episode['content']['videos'][0]['videoType'],
+                        'videoUrl': episode['content']['videos'][0]['url'],
+                        'duration': episode['content']['duration'],
+                        'dateAdded': existing_episode['dateAdded'], 
+                        'lastWatched': existing_episode['lastWatched'],
+                        'views': existing_episode['views']
+                        })
 
-                if not existing_episode:
-                    episode_table.put_item(Item = {
-                    'tvShowName': tv_show['title'], 
-                    'seasonAndEpisode': season_and_episode,
-                    'season': season['title'],
-                    'episode': episode['episodeNumber'],
-                    'name': episode['title'],
-                    'description': episode['longDescription'],
-                    'thumbnailUrl': episode['thumbnail'],
-                    'releaseDate': episode['releaseDate'],
-                    'rating': episode['rating'],
-                    'cast': episode['cast'],
-                    'director': episode['director'],
-                    'genres': episode['genres'],
-                    'videoType': episode['content']['videos'][0]['videoType'],
-                    'videoUrl': episode['content']['videos'][0]['url'],
-                    'duration': episode['content']['duration'],
-                    'dateAdded': current_date_time, 
-                    'lastWatched': None,
-                    'views': 0
-                    })
-                elif UPDATE_ALL_DATA_EXCEPT_TIMESTAMPS:
-                    # If episode already exists should update all fields in dynamo except dateAdded, lastWatched, and views
-                    episode_table.put_item(Item = {
-                    'tvShowName': tv_show['title'], 
-                    'seasonAndEpisode': season_and_episode,
-                    'season': season['title'],
-                    'episode': episode['episodeNumber'],
-                    'name': episode['title'],
-                    'description': episode['longDescription'],
-                    'thumbnailUrl': episode['thumbnail'],
-                    'releaseDate': episode['releaseDate'],
-                    'rating': episode['rating'],
-                    'cast': episode['cast'],
-                    'director': episode['director'],
-                    'genres': episode['genres'],
-                    'videoType': episode['content']['videos'][0]['videoType'],
-                    'videoUrl': episode['content']['videos'][0]['url'],
-                    'duration': episode['content']['duration'],
-                    'dateAdded': existing_episode['dateAdded'], 
-                    'lastWatched': existing_episode['lastWatched'],
-                    'views': existing_episode['views']
-                    })
+                except Exception as ex:
+                    print(f"Error creating/updating TV Show: {tv_show['title']}, Season/Episode: {season_and_episode}. Exception: {ex}")
 
-    logger.info("TV Show import completed.")       
+
+    print("TV Show import completed.")       
+
 
 def get_dynamo_record_by_pk(pk_name, pk_value, table):
     try:
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value))
     except Exception as ex:
-        logger.error(f"Error retrieving records with primary key {pk_value} from table {table}. Exception: {ex}")
+        print(f"Error retrieving records with primary key {pk_value} from table {table}. Exception: {ex}")
 
 
 def get_dynamo_record_by_pk_and_sk(pk_name, pk_value, sk_name, sk_value, table):
     try:
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value) & Key(sk_name).eq(sk_value))
     except Exception as ex:
-        logger.error(f"Error retrieving records with primary key {pk_value} and sort key {sk_value} from table {table}. Exception: {ex}")
+        print(f"Error retrieving records with primary key {pk_value} and sort key {sk_value} from table {table}. Exception: {ex}")
