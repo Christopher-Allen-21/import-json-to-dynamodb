@@ -151,8 +151,11 @@ def create_and_update_tv_shows(tv_shows_json_data):
         
         for season in tv_show['seasons']:
             for episode in season['episodes']:
-
-                season_and_episode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
+                
+                if seasonIsNotMoviesExtrasOrMiniSeries(season['title']):
+                    season_and_episode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
+                else:
+                    season_and_episode = season['title'] + ' E' + str(episode['episodeNumber'])
                 
                 if len(get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items']) == 1:
                     existing_episode = get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items'][0]
@@ -209,6 +212,13 @@ def create_and_update_tv_shows(tv_shows_json_data):
 
 
     print("TV Show import completed.")       
+
+
+def seasonIsNotMoviesExtrasOrMiniSeries(season_name):
+    if season_name != 'Movies' and season_name != 'Extras' and season_name != 'Mini Series':
+        return True
+    else:
+        return False
 
 
 def get_dynamo_record_by_pk(pk_name, pk_value, table):
