@@ -79,6 +79,7 @@ def create_and_update_movies(movie_json_data):
                     'lastWatched': None,
                     'views': 0
                     })
+                print(f"Added new Movie: {movie['title']}")
             elif UPDATE_EXISTING_MOVIE_DATA:
                 # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
                 for existing_movie in existing_movies:
@@ -132,6 +133,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 'lastWatched': None,
                 'views': 0
                 })
+            print(f"Added new TV Show: {tv_show['title']}")
         elif UPDATE_EXISTING_TV_DATA:
             # If tv show already exists should update all fields in dynamo except dateAdded, lastWatched, and views
             tv_show_table.put_item(Item = {
@@ -152,7 +154,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
         for season in tv_show['seasons']:
             for episode in season['episodes']:
                 
-                if seasonIsNotMoviesExtrasOrMiniSeries(season['title']):
+                if seasonIsNumeric(season['title']):
                     season_and_episode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
                 else:
                     season_and_episode = season['title'] + ' E' + str(episode['episodeNumber'])
@@ -214,8 +216,8 @@ def create_and_update_tv_shows(tv_shows_json_data):
     print("TV Show import completed.")       
 
 
-def seasonIsNotMoviesExtrasOrMiniSeries(season_name):
-    if season_name != 'Movies' and season_name != 'Extras' and season_name != 'Mini Series':
+def seasonIsNumeric(season_name):
+    if season_name != 'Pilot' and season_name != 'Extras' and season_name != 'Movies' and season_name != 'Mini Series':
         return True
     else:
         return False
