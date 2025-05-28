@@ -49,6 +49,8 @@ def lambda_handler(event, context):
     
 
 def create_and_update_movies(movie_json_data):
+    print("Movie import started.")
+
     for movie in movie_json_data:
 
         # Trim last three digits to only show milliseconds
@@ -108,6 +110,8 @@ def create_and_update_movies(movie_json_data):
 
 
 def create_and_update_tv_shows(tv_shows_json_data):
+    print("TV Show import started.")   
+
     for tv_show in tv_shows_json_data:
 
         # Trim last three digits to only show milliseconds
@@ -154,10 +158,13 @@ def create_and_update_tv_shows(tv_shows_json_data):
         for season in tv_show['seasons']:
             for episode in season['episodes']:
                 
-                if seasonIsNumeric(season['title']):
-                    season_and_episode = 'S' + season['title'] + ' E' + str(episode['episodeNumber'])
+                if notSpecialSeason(season['title']):
+                    season_number_padded = str(f"{int(season['title']):02}")  # e.g., '1' -> '01'
+                    episode_number_padded = str(f"{int(episode['episodeNumber']):02}")  # e.g., 3 -> '03'
+                    season_and_episode = f"S{season_number_padded} E{episode_number_padded}"
                 else:
-                    season_and_episode = season['title'] + ' E' + str(episode['episodeNumber'])
+                    episode_number_padded = str(f"{int(episode['episodeNumber']):02}")
+                    season_and_episode = f"{season['title']} E{episode_number_padded}"
                 
                 if len(get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items']) == 1:
                     existing_episode = get_dynamo_record_by_pk_and_sk('tvShowName', tv_show['title'], 'seasonAndEpisode', season_and_episode, episode_table)['Items'][0]
@@ -216,7 +223,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
     print("TV Show import completed.")       
 
 
-def seasonIsNumeric(season_name):
+def notSpecialSeason(season_name):
     if season_name != 'Pilot' and season_name != 'Extras' and season_name != 'Movies' and season_name != 'Mini Series':
         return True
     else:
