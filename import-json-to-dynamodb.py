@@ -80,7 +80,7 @@ def create_and_update_movies(movie_json_data):
                     'lastWatched': None,
                     'views': 0
                     })
-                print(f"Added new Movie: {movie['title']} ({movie['year']})")
+                print(f"Added new Movie: {movie['title']} ({movie['releaseDate']})")
             elif UPDATE_EXISTING_MOVIE_DATA:
                 # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
                 for existing_movie in existing_movies:
@@ -102,7 +102,7 @@ def create_and_update_movies(movie_json_data):
                         'views': existing_movie['views']
                         })
         except Exception as ex:
-                print(f"Error creating/updating Movie: {movie['title']}. Exception: {ex}")
+                print(f"Error creating/updating Movie: {movie['title']} ({movie['releaseDate']}). Exception: {ex}")
                 print(ex)
                 
     print("Movie import completed.")            
