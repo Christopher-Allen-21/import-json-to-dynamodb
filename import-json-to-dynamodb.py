@@ -1,6 +1,6 @@
 import json
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime
 
 
@@ -56,9 +56,8 @@ def create_and_update_movies(movie_json_data):
         # Trim last three digits to only show milliseconds
         current_date_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S %f')[:-3]
 
-        if len(get_dynamo_record_by_pk('name', movie['title'], movie_table)['Items']) > 0:
-            # An array of all movies with same name
-            existing_movies = get_dynamo_record_by_pk('name', movie['title'], movie_table)['Items']
+        if len(get_dynamo_record_by_pk_and_field_value('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items']) > 0:
+            existing_movies = get_dynamo_record_by_pk_and_field_value('name', movie['title'], 'year', movie['releaseDate'], movie_table)['Items']
         else:
             existing_movies = None
 
@@ -81,7 +80,7 @@ def create_and_update_movies(movie_json_data):
                     'lastWatched': None,
                     'views': 0
                     })
-                print(f"Added new Movie: {movie['title']}")
+                print(f"Added new Movie: {movie['title']} ({movie['year']})")
             elif UPDATE_EXISTING_MOVIE_DATA:
                 # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
                 for existing_movie in existing_movies:
@@ -142,7 +141,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
             # If tv show already exists should update all fields in dynamo except dateAdded, lastWatched, and views
             tv_show_table.put_item(Item = {
                 'name': tv_show['title'], 
-                'description': tv_show['shortDescription'],
+                'description': tv_show['shortDescription'], 
                 'thumbnailUrl': tv_show['thumbnail'],
                 'releaseDate': tv_show['releaseDate'],
                 'rating': tv_show['rating'],
@@ -159,8 +158,8 @@ def create_and_update_tv_shows(tv_shows_json_data):
             for episode in season['episodes']:
                 
                 if notSpecialSeason(season['title']):
-                    season_number_padded = str(f"{int(season['title']):02}")  # e.g., '1' -> '01'
-                    episode_number_padded = str(f"{int(episode['episodeNumber']):02}")  # e.g., 3 -> '03'
+                    season_number_padded = f"{int(season['title']):02}"  # e.g., '1' -> '01'
+                    episode_number_padded = f"{int(episode['episodeNumber']):02}"  # e.g., 3 -> '03'
                     season_and_episode = f"S{season_number_padded} E{episode_number_padded}"
                 else:
                     episode_number_padded = str(f"{int(episode['episodeNumber']):02}")
@@ -242,3 +241,10 @@ def get_dynamo_record_by_pk_and_sk(pk_name, pk_value, sk_name, sk_value, table):
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value) & Key(sk_name).eq(sk_value))
     except Exception as ex:
         print(f"Error retrieving records with primary key {pk_value} and sort key {sk_value} from table {table}. Exception: {ex}")
+
+
+def get_dynamo_record_by_pk_and_field_value(pk_name, pk_value, field_name, field_value, table):
+    try:
+        return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value), FilterExpression=Attr(field_name).eq(field_value))
+    except Exception as ex:
+        print(f"Error retrieving records with primary key {pk_value} and {field_name} {field_value} from table {table}. Exception: {ex}")
