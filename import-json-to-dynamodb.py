@@ -127,7 +127,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 'description': tv_show['shortDescription'],
                 'thumbnailUrl': tv_show['thumbnail'],
                 'releaseDate': tv_show['releaseDate'],
-                "firstAired": tv_show["firstAired"],
+                "firstAired": tv_show["releaseDate"][:4],
                 'rating': tv_show['rating'],
                 'cast': tv_show['cast'],
                 'director': tv_show['director'],
