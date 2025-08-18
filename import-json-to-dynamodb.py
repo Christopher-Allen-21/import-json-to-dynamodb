@@ -7,16 +7,17 @@ from datetime import datetime
 MOVIE_TABLE = 'movies'
 TV_SHOW_TABLE = 'tv-shows'
 EPISODE_TABLE = 'episodes'
+VIEWS_TABLE = 'views'
 
 S3_BUCKET = 'video-content-bucket-1'
 JSON_FILE = 'contentFeed.json'
 
 
-# Set to True to update all Movie fields except dateAdded, lastWatched, and views
+# Set to True to update all Movie fields except dateAdded and lastWatched
 # Set to False to only add new movies
 UPDATE_EXISTING_MOVIE_DATA = False
 
-# Set to True to update all TV Show fields except dateAdded, lastWatched, and views
+# Set to True to update all TV Show fields except dateAdded and lastWatched
 # Set to False to only add tv shows
 UPDATE_EXISTING_TV_DATA = False
 
@@ -30,6 +31,7 @@ dynamodb = boto3.resource('dynamodb')
 movie_table = dynamodb.Table(MOVIE_TABLE)
 tv_show_table = dynamodb.Table(TV_SHOW_TABLE)
 episode_table = dynamodb.Table(EPISODE_TABLE)
+views_table = dynamodb.Table(VIEWS_TABLE)
 
 
 def lambda_handler(event, context):
@@ -82,8 +84,12 @@ def create_and_update_movies(movie_json_data):
                     })
                 print(f"Added new Movie: {movie['title']} ({movie['releaseDate']})")
             elif UPDATE_EXISTING_MOVIE_DATA:
-                # If movie(s) already exists should update all fields in dynamo except dateAdded, lastWatched, and views
+                # If movie(s) already exists should update all fields in dynamo except dateAdded and lastWatched
                 for existing_movie in existing_movies:
+
+                    # MIGHT HAVE ISSUES WITH MOVIES WITH SAME NAME
+                    movie_views = get_dynamo_record_by_pk("name", movie['title'], views_table)['Items']
+
                     movie_table.put_item(Item = {
                         'name': movie['title'], 
                         'year': movie['releaseDate'], 
@@ -99,7 +105,7 @@ def create_and_update_movies(movie_json_data):
                         'trailerUrl': existing_movie['trailerUrl'],
                         'dateAdded': existing_movie['dateAdded'],
                         'lastWatched': existing_movie['lastWatched'],
-                        'views': existing_movie['views']
+                        'views': len(movie_views)
                         })
         except Exception as ex:
                 print(f"Error creating/updating Movie: {movie['title']} ({movie['releaseDate']}). Exception: {ex}")
@@ -139,7 +145,11 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 })
             print(f"Added new TV Show: {tv_show['title']}")
         elif UPDATE_EXISTING_TV_DATA:
-            # If tv show already exists should update all fields in dynamo except dateAdded, lastWatched, and views
+            # If tv show already exists should update all fields in dynamo except dateAdded and lastWatched
+
+            # MIGHT HAVE ISSUES WITH MOVIES WITH SAME NAME
+            tv_show_views = get_dynamo_record_by_pk("name", tv_show["title"], views_table)['Items']
+
             tv_show_table.put_item(Item = {
                 'name': tv_show['title'], 
                 'description': tv_show['shortDescription'], 
@@ -153,7 +163,7 @@ def create_and_update_tv_shows(tv_shows_json_data):
                 'numberOfSeasons': len(tv_show['seasons']),
                 'dateAdded': existingTvShow['dateAdded'],
                 'lastWatched': existingTvShow['lastWatched'],
-                'views': existingTvShow['views']
+                'views': len(tv_show_views)
                 })
         
         for season in tv_show['seasons']:
@@ -235,18 +245,18 @@ def get_dynamo_record_by_pk(pk_name, pk_value, table):
     try:
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value))
     except Exception as ex:
-        print(f"Error retrieving records with primary key {pk_value} from table {table}. Exception: {ex}")
+        print(f"Error retrieving records with partition key {pk_value} from table {table}. Exception: {ex}")
 
 
 def get_dynamo_record_by_pk_and_sk(pk_name, pk_value, sk_name, sk_value, table):
     try:
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value) & Key(sk_name).eq(sk_value))
     except Exception as ex:
-        print(f"Error retrieving records with primary key {pk_value} and sort key {sk_value} from table {table}. Exception: {ex}")
+        print(f"Error retrieving records with partition key {pk_value} and sort key {sk_value} from table {table}. Exception: {ex}")
 
 
 def get_dynamo_record_by_pk_and_field_value(pk_name, pk_value, field_name, field_value, table):
     try:
         return table.query(KeyConditionExpression=Key(pk_name).eq(pk_value), FilterExpression=Attr(field_name).eq(field_value))
     except Exception as ex:
-        print(f"Error retrieving records with primary key {pk_value} and {field_name} {field_value} from table {table}. Exception: {ex}")
+        print(f"Error retrieving records with partition key {pk_value} and {field_name} {field_value} from table {table}. Exception: {ex}")
