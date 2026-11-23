@@ -73,7 +73,7 @@ def create_and_update_movies(movie_json_data):
                     'rating': movie['rating'], 
                     'cast': movie['cast'], 
                     'director': movie['director'], 
-                    'genres': movie['genres'], 
+                    'genres': get_movie_genres(movie), 
                     'duration': movie['content']['duration'], 
                     'videoType': movie['content']['videos'][0]['videoType'], 
                     'videoUrl': movie['content']['videos'][0]['url'], 
@@ -98,7 +98,7 @@ def create_and_update_movies(movie_json_data):
                         'rating': movie['rating'], 
                         'cast': movie['cast'], 
                         'director': movie['director'], 
-                        'genres': movie['genres'], 
+                        'genres': get_movie_genres(movie), 
                         'duration': movie['content']['duration'], 
                         'videoType': movie['content']['videos'][0]['videoType'], 
                         'videoUrl': movie['content']['videos'][0]['url'], 
@@ -232,6 +232,14 @@ def create_and_update_tv_shows(tv_shows_json_data):
 
 
     print("TV Show import completed.")       
+
+
+def get_movie_genres(movie):
+    # Append "Featured" genre to movies released in the current year
+    genres = list(movie['genres'] or [])
+    if str(movie['releaseDate'])[:4] == str(datetime.today().year) and 'Featured' not in genres:
+        genres.append('Featured')
+    return genres
 
 
 def notSpecialSeason(season_name):
